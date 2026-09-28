@@ -55,6 +55,7 @@ SPACE_TAG = {
 }
 SPACE_COLORS = [RED, ORANGE, BLUE, "#18c48f"]
 ASSETS_DIR = ROOT / "assets"
+PAGE_SIZE = (210 / 25.4, 297 / 25.4)
 
 QUESTION_DIMENSION_RULES = [
     (r"satisfacao|frustracao|desanimo|tensoes|conflitos|motivacao|fatores externos|bem-estar", "SPACE-W (Satisfaction & Well-Being)"),
@@ -79,6 +80,7 @@ def setup_style() -> None:
             "axes.facecolor": PANEL,
             "figure.facecolor": PAGE,
             "savefig.facecolor": PAGE,
+            "savefig.bbox": None,
             "axes.labelcolor": TEXT,
             "xtick.color": TEXT,
             "ytick.color": TEXT,
@@ -89,13 +91,13 @@ def setup_style() -> None:
 
 
 def read_team_metadata(team_dir: Path) -> dict[str, str]:
-    metadata = {"Professor(a)": "n/d", "Período": "n/d", "Alunos": "n/d"}
+    metadata = {"Professor(a)": "n/d", "Período": "n/d", "Projeto": "n/d"}
     readme = team_dir / "README.md"
     if not readme.exists():
         return metadata
     text = fix_mojibake(readme.read_text(encoding="utf-8", errors="replace"))
     for line in text.splitlines():
-        match = re.match(r"^-\s*(Professor\(a\)|Período|Alunos):\s*(.+)$", line.strip())
+        match = re.match(r"^-\s*(Professor\(a\)|Período|Projeto):\s*(.+)$", line.strip())
         if match:
             metadata[match.group(1)] = match.group(2).strip()
     return metadata
@@ -123,32 +125,49 @@ def add_wrapped(
 
 
 def page(title: str, subtitle: str | None = None):
-    fig = plt.figure(figsize=(8.27, 11.69), facecolor=PAGE)
-    fig.text(0.07, 0.925, title, fontsize=25, weight="bold", color=TEXT, va="top")
+    fig = plt.figure(figsize=PAGE_SIZE, facecolor=PAGE)
+    add_fitted_text(fig, 0.07, 0.925, title, 0.86, 25, weight="bold", color=TEXT, va="top")
     if subtitle:
         fig.text(0.07, 0.885, subtitle, fontsize=11, color=MUTED, va="top")
     return fig
 
 
+def add_fitted_text(fig, x: float, y: float, text: str, width: float, size: float, **kwargs):
+    artist = fig.text(x, y, text, fontsize=size, **kwargs)
+    fig.canvas.draw()
+    rendered_width = artist.get_window_extent(fig.canvas.get_renderer()).width
+    available_width = width * fig.bbox.width
+    if rendered_width > available_width:
+        artist.set_fontsize(size * available_width / rendered_width * 0.98)
+    return artist
+
+
+def save_page(pdf: PdfPages, fig) -> None:
+    fig.text(0.07, 0.028, "NES SPACE - Survey Alunos", fontsize=8, color=MUTED, va="bottom")
+    fig.text(0.93, 0.028, str(pdf.get_pagecount() + 1), fontsize=8, color=MUTED, ha="right", va="bottom")
+    # Tight bounding boxes crop each page to a different paper size.
+    pdf.savefig(fig, bbox_inches=None, facecolor=PAGE)
+    plt.close(fig)
+
+
 def render_title_cover(pdf: PdfPages, team_label: str, selected_report) -> None:
-    fig = plt.figure(figsize=(8.27, 11.69), facecolor=PAGE)
-    fig.text(0.07, 0.78, "Relatório NES SPACE", fontsize=31, weight="bold", color=TEXT, va="top")
-    fig.text(0.07, 0.715, f"{team_label.upper()} · {selected_report.sprint} · Survey Alunos", fontsize=16, color=MUTED, va="top")
-    fig.text(0.07, 0.62, "Relatório para compartilhamento com a equipe", fontsize=18, weight="bold", color=TEXT)
+    fig = plt.figure(figsize=PAGE_SIZE, facecolor=PAGE)
+    fig.text(0.07, 0.72, "Relatório NES SPACE", fontsize=31, weight="bold", color=TEXT, va="top")
+    fig.text(0.07, 0.655, f"{team_label.upper()} · {selected_report.sprint} · Survey Alunos", fontsize=16, color=MUTED, va="top")
+    add_fitted_text(fig, 0.07, 0.56, "Relatório para compartilhamento com a equipe", 0.86, 18, weight="bold", color=TEXT)
     add_wrapped(
         fig,
         0.07,
-        0.575,
+        0.515,
         "Material de apoio para conversa sobre produtividade, comunicação, fluxo de trabalho, satisfação e melhoria contínua.",
         width=78,
         size=11,
         color=MUTED,
     )
-    add_logo(fig, ASSETS_DIR / "ufms_original.png", (0.62, 0.765, 0.20, 0.075))
-    add_logo(fig, ASSETS_DIR / "facom_light_transparent.png", (0.84, 0.745, 0.10, 0.105))
+    add_logo(fig, ASSETS_DIR / "ufms_original.png", (0.07, 0.83, 0.26, 0.095))
+    add_logo(fig, ASSETS_DIR / "facom_light_transparent.png", (0.80, 0.81, 0.13, 0.13))
     fig.text(0.07, 0.10, "A leitura deve ser contextual e não representa ranking entre equipes.", fontsize=9.5, color=MUTED)
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    save_page(pdf, fig)
 
 
 def cropped_logo(path: Path) -> Image.Image | None:
@@ -175,7 +194,7 @@ def rounded_panel(fig, x: float, y: float, w: float, h: float, color: str = PANE
         (x, y),
         w,
         h,
-        boxstyle="round,pad=0.012,rounding_size=0.018",
+        boxstyle="round,pad=0.007,rounding_size=0.012",
         transform=fig.transFigure,
         facecolor=color,
         edgecolor=edge,
@@ -190,7 +209,7 @@ def metric_card(fig, x: float, y: float, w: float, h: float, label: str, value: 
     rounded_panel(fig, x, y, w, h, PANEL_2)
     fig.add_artist(Rectangle((x, y), 0.008, h, transform=fig.transFigure, color=accent, ec=accent))
     fig.text(x + 0.025, y + h - 0.028, label.upper(), fontsize=8.5, color=MUTED, weight="bold", va="top")
-    fig.text(x + 0.025, y + 0.025, value, fontsize=22, color=TEXT, weight="bold", va="bottom")
+    add_fitted_text(fig, x + 0.025, y + 0.025, value, w - 0.045, 22, color=TEXT, weight="bold", va="bottom")
 
 
 def note_panel(fig, x: float, y: float, w: float, h: float, text: str) -> None:
@@ -308,14 +327,14 @@ def render_cover(pdf: PdfPages, team_dir: Path, team_label: str, reports, select
         fig,
         0.07,
         y,
-        "A comparação contextual usa a média das equipes apenas como referência de leitura, sem representar ranking entre times.",
+        "A comparação contextual usa somente as equipes disponíveis neste repositório como referência de leitura, sem representar ranking entre times.",
         width=88,
         size=10.5,
         color=MUTED,
     )
 
     fig.text(0.07, 0.675, f"Professor(a): {metadata['Professor(a)']} · Período: {metadata['Período']}", fontsize=10.5, color=TEXT)
-    add_wrapped(fig, 0.07, 0.646, f"Alunos: {metadata['Alunos']}", width=110, size=9.3, color=MUTED)
+    add_wrapped(fig, 0.07, 0.646, f"Projeto: {metadata['Projeto']}", width=110, size=9.3, color=MUTED)
 
     space_mean = pd.Series(selected_report.space, dtype="float64").mean() if selected_report.space else None
     metric_card(fig, 0.07, 0.515, 0.25, 0.10, "Nota do Survey", score_text(selected_report.overall), RED)
@@ -345,8 +364,7 @@ def render_cover(pdf: PdfPages, team_dir: Path, team_label: str, reports, select
         fig.text(x_positions[2], y, score_text(report.overall), fontsize=9, color=TEXT)
         y -= 0.028
 
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    save_page(pdf, fig)
 
 
 def render_space_page(pdf: PdfPages, reports, selected_report) -> None:
@@ -354,55 +372,42 @@ def render_space_page(pdf: PdfPages, reports, selected_report) -> None:
     hist = team_space_history(reports)
 
     if not hist.empty:
-        ax = fig.add_axes([0.10, 0.52, 0.80, 0.31], facecolor=PANEL)
+        ax = fig.add_axes([0.10, 0.55, 0.80, 0.28], facecolor=PANEL)
         sprint_labels = (
             hist[["Sprint", "Sprint Nº"]]
             .drop_duplicates()
             .sort_values("Sprint Nº")
         )
-        start_offsets = {
-            0: (-26, -22),
-            1: (30, -18),
-            2: (14, 16),
-            3: (34, 14),
-        }
-        end_offsets = {
-            0: (-8, -20),
-            1: (-14, 18),
-            2: (-32, -4),
-            3: (26, 12),
-        }
         for idx, dim in enumerate(SPACE_ORDER):
             part = hist[hist["Dimensão"] == dim]
             if part.empty:
                 continue
             ax.plot(part["Sprint Nº"], part["Nota"], marker="o", lw=2.6, color=SPACE_COLORS[idx], label=SPACE_SHORT[dim].replace("\n", " "))
-            for point_idx, (_, row) in enumerate(part.iterrows()):
-                offsets = start_offsets if point_idx == 0 else end_offsets
-                xytext = offsets.get(idx, (0, 12))
-                ax.annotate(
-                    f"{SPACE_TAG.get(dim, '')} {row['Nota']:.2f}",
-                    xy=(row["Sprint Nº"], row["Nota"]),
-                    xytext=xytext,
-                    textcoords="offset points",
-                    ha="center",
-                    va="center",
-                    fontsize=8,
-                    color=TEXT,
-                    bbox={"boxstyle": "round,pad=0.18", "fc": PANEL, "ec": "none", "alpha": 0.86},
-                )
         ax.set_ylim(0, 10)
         ax.set_xlim(sprint_labels["Sprint Nº"].min() - 0.12, sprint_labels["Sprint Nº"].max() + 0.12)
         ax.set_xticks(sprint_labels["Sprint Nº"].tolist(), sprint_labels["Sprint"].tolist())
         ax.set_ylabel("Nota")
         ax.set_title("")
         ax.grid(axis="y", alpha=0.22, color=GRID)
-        ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, -0.34), ncol=2, labelcolor=TEXT)
         ax.spines[["top", "right"]].set_visible(False)
 
-    rounded_panel(fig, 0.08, 0.22, 0.84, 0.18, PANEL_2)
-    fig.text(0.105, 0.375, "Dimensões do modelo SPACE", fontsize=12.5, weight="bold", color=TEXT, va="top")
-    y = 0.342
+        # Keep close scores readable without overlapping point annotations.
+        rounded_panel(fig, 0.08, 0.405, 0.84, 0.115, PANEL_2)
+        labels = sprint_labels["Sprint"].tolist()
+        value_positions = [0.52 + (index + 0.5) * 0.36 / len(labels) for index in range(len(labels))]
+        fig.text(0.105, 0.505, "Dimensão", fontsize=8, color=MUTED, weight="bold", va="top")
+        for position, label in zip(value_positions, labels):
+            fig.text(position, 0.505, label, fontsize=8, color=MUTED, weight="bold", ha="center", va="top")
+        for index, dim in enumerate(SPACE_ORDER):
+            y = 0.478 - index * 0.021
+            fig.text(0.105, y, SPACE_SHORT[dim].replace("\n", " "), fontsize=8, color=SPACE_COLORS[index], va="top")
+            for position, label in zip(value_positions, labels):
+                values = hist[(hist["Dimensão"] == dim) & (hist["Sprint"] == label)]["Nota"]
+                fig.text(position, y, score_text(values.iloc[0] if not values.empty else None), fontsize=8, color=TEXT, ha="center", va="top")
+
+    rounded_panel(fig, 0.08, 0.18, 0.84, 0.18, PANEL_2)
+    fig.text(0.105, 0.335, "Dimensões do modelo SPACE", fontsize=12.5, weight="bold", color=TEXT, va="top")
+    y = 0.302
     for item in [
         "Satisfaction & Well-Being: satisfação, motivação, bem-estar e tensões percebidas.",
         "Performance: percepção de entrega, qualidade e resultado do trabalho.",
@@ -412,12 +417,12 @@ def render_space_page(pdf: PdfPages, reports, selected_report) -> None:
     ]:
         y = add_wrapped(fig, 0.105, y, f"• {item}", width=96, size=7.8, color=MUTED, line_height=0.019)
 
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    save_page(pdf, fig)
 
 
 def render_comparison_page(pdf: PdfPages, team_dir: Path, team_label: str, selected_report) -> None:
-    fig = page("Comparação Contextual", f"{team_label.upper()} · {selected_report.sprint}")
+    reference_teams = sorted({report.team for report in load_all_team_reports(team_dir) if report.sprint == selected_report.sprint and report.team}, key=sprint_num)
+    fig = page("Comparação Contextual", f"{team_label.upper()} · {selected_report.sprint} · Referência: {', '.join(reference_teams)}")
     y = 0.815
     y = add_wrapped(
         fig,
@@ -433,7 +438,7 @@ def render_comparison_page(pdf: PdfPages, team_dir: Path, team_label: str, selec
         fig,
         0.07,
         y,
-        "O gráfico compara a equipe atual com a média das equipes na mesma sprint, separado por dimensão SPACE. Ele ajuda a identificar temas para conversa, sem representar ranking entre times.",
+        "O gráfico compara a equipe atual com a média somente dos times disponíveis neste repositório na mesma sprint. Não representa toda a turma nem um ranking entre times.",
         width=95,
         size=9.6,
         color=MUTED,
@@ -453,7 +458,7 @@ def render_comparison_page(pdf: PdfPages, team_dir: Path, team_label: str, selec
         ax.set_ylim(0, 10)
         ax.set_ylabel("Nota")
         ax.set_title("")
-        ax.legend(frameon=False, loc="upper right", labelcolor=TEXT)
+        ax.legend(frameon=False, loc="lower right", bbox_to_anchor=(1, 1.02), ncol=2, labelcolor=TEXT)
         ax.grid(axis="y", alpha=0.22, color=GRID)
         ax.spines[["top", "right"]].set_visible(False)
         for i, value in enumerate(current):
@@ -461,8 +466,7 @@ def render_comparison_page(pdf: PdfPages, team_dir: Path, team_label: str, selec
         for i, value in enumerate(mean):
             ax.text(i + width / 2, value + 0.15, f"{value:.2f}", ha="center", fontsize=8, color=TEXT)
 
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    save_page(pdf, fig)
 
 
 def render_questions_pages(pdf: PdfPages, team_label: str, selected_report) -> None:
@@ -477,8 +481,7 @@ def render_questions_pages(pdf: PdfPages, team_label: str, selected_report) -> N
         color=MUTED,
     )
     question_cards(fig, "Itens com maior pontuação", selected_report.top5, 0.07, 0.715, "strength")
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    save_page(pdf, fig)
 
     fig = page("Pontos de Atenção para Conversa", f"{team_label.upper()} · {selected_report.sprint}")
     add_wrapped(
@@ -491,8 +494,7 @@ def render_questions_pages(pdf: PdfPages, team_label: str, selected_report) -> N
         color=MUTED,
     )
     question_cards(fig, "Itens que merecem investigação", selected_report.bottom5, 0.07, 0.715, "attention")
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    save_page(pdf, fig)
 
 
 def export_team_pdf(team: str, sprint: str | None, output: Path) -> Path:

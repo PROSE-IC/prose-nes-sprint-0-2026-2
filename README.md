@@ -9,6 +9,7 @@ de auditoria e pacotes ZIP nao sao versionados.
 ## Estado desta leva
 
 - T1 a T10: Sprint 0 carregada a partir do Survey Alunos.
+- Total de estudantes: 60, com seis integrantes por equipe. O cadastro do T9 foi corrigido em 28/09/2026; sua participacao e 4/6 (66,7%).
 - Dashboards separados por equipe, com notas agregadas do Survey e dimensoes SPACE.
 - PDFs das devolutivas da Sprint 0 gerados para todas as equipes.
 - Dados sem respostas futuras devem ser exibidos como `n/d`.

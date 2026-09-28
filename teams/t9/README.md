@@ -5,13 +5,13 @@ Dashboard da equipe T9 no semestre 2026/2, com analise das dimensoes SPACE a par
 ## Equipe
 
 - Projeto: HPV Conecta
-- Professor(a): Patricia
-- Periodo: Noturno
-- Alunos: Ana Barbosa, Luigi Almeida, Maria Colombo, Mylena Farias e Vinicius Aguiar
+- Professor(a): Patrícia
+- Período: Noturno
+- Integrantes: 6
 
 ## Dados carregados
 
-- Sprint 0: Survey Alunos
+- Sprint 0: Survey Alunos; 4 respostas de 6 integrantes (66,7%).
 
 ## Deploy
 
