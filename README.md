@@ -40,6 +40,18 @@ Forms, auditorias de classificacao e ZIPs permanecem fora do repositorio.
 
 ## Relatorios PDF
 
+O modelo aprovado tem cinco paginas: capa escura e paginas internas claras
+para resumo, evolucao SPACE com comparacao contextual, pontos fortes e pontos
+de atencao. O T9 foi restaurado nesse modelo em 28/09/2026, mantendo 4/6 (66,7%)
+e as notas originais. Seu PDF publico mostra apenas o total de integrantes.
+
+Para regenerar a partir das metricas locais com precisao completa:
+
+```powershell
+pip install -r requirements-pdf.txt
+python scripts/export_team_pdf.py --team T9 --sprint 0 --metrics-root ../prose-nes-survey-toolkit/output/2026-2/teams --output pdfs/relatorio_T9_sprint_0.pdf
+```
+
 - [T1 - Sprint 0](pdfs/relatorio_T1_sprint_0.pdf)
 - [T2 - Sprint 0](pdfs/relatorio_T2_sprint_0.pdf)
 - [T3 - Sprint 0](pdfs/relatorio_T3_sprint_0.pdf)
